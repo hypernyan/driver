@@ -1,0 +1,17 @@
+/src/*/*/*
+/tb/*/*
+/quartus/*
+**/test_library
+**/design_library
+!*.v
+!*.sv
+!*.txt
+!*.tcl
+!*.do
+!*.bat
+!*.sh
+!*.qpf
+!*.qsf
+!*.pin
+!*.sof
+!*.jic
