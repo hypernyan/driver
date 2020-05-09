@@ -378,19 +378,19 @@ assign rx_fsm_rdy = (fsm_rx != rx_wait_rst_s);
 logic rsp_ver;
 always @ (posedge clk) begin
   if (fsm_rst) begin
-    fsm_rx   <= rx_idle_s;
+    fsm_rx     <= rx_idle_s;
     cmd_ctr_rx <= 0;
     prm_ctr_rx <= 0;
     dat_ctr_rx <= 0;
-    cur_rx   <= 0;
-    dot_pos  <= 0;
+    cur_rx     <= 0;
+    dot_pos    <= 0;
     dot_pres   <= 0;
     k_mod_pres <= 0;
     conv_bcd   <= 0;
     scan_prm   <= 0;
     stop_read  <= 0;
-    err_rx <= rx_ok;
-	 rsp_ver <= 0;
+    err_rx     <= rx_ok;
+	  rsp_ver    <= 0;
   end
   else if (rx_buf.valid_out) begin
     case (fsm_rx)
