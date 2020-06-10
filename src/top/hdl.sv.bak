@@ -34,7 +34,7 @@ module top (
 	//input  logic uart_rxd, // FTDI
 	//output logic uart_txd,
 
-	(* chip_pin = "T15, R14, P14, T14, R13, T13, R12, P11" *) input  logic [7:0] adc,
+//	(* chip_pin = "T15, R14, P14, T14, R13, T13, R12, P11" *) input  logic [7:0] adc,
 	(* chip_pin = "T12" *) output logic adc_clk, // 100 MHz ADC sampling clock
 
 	(* chip_pin = "J14" *) output logic spi_csn, // AGC pot SPI
@@ -47,13 +47,14 @@ module top (
 	(* chip_pin = "F15" *) output logic mdc,  // PHY
 	(* chip_pin = "C15" *) inout  logic mdio,
 
-//	(* chip_pin = "L2, P1" *) input logic [1:0] mii_rx_dat,
-//	(* chip_pin = "R1" *)     input logic       mii_rx_val,
-//	(* chip_pin = "K2" *)     input logic       mii_rx_clk,
-//
-//	(* chip_pin = "L2, P1" *) output logic [1:0] mii_tx_data,
-//	(* chip_pin = "R1" *)     output logic       mii_tx_valid,
-//	(* chip_pin = "K2" *)     output logic       mii_tx_clk,
+	(* chip_pin = "R13, T14, P1, L2" *) input logic [3:0] mii_rx_dat,
+	(* chip_pin = "K2" *)               input logic       mii_rx_val,
+	(* chip_pin = "R1" *)               input logic       mii_rx_clk,
+
+	(* chip_pin = "R14, P14, P2, J1" *) output logic [3:0] mii_tx_data,
+	(* chip_pin = "N1" *)     output logic                 mii_tx_valid,
+	(* chip_pin = "J2" *)     output logic                 mii_tx_clk,
+	(* chip_pin = "N2" *)     output logic                 phy_refclk,
 
 	(* chip_pin = "T7" *) output logic uart_txd,  // fsdi
 	(* chip_pin = "R7" *) input  logic uart_rxd,  // clk
@@ -73,11 +74,25 @@ parameter int ADC_BITS  = 8;
 parameter bit DEFAULT_STATE = 0;
 
 reset_controller reset_controller_inst(
-	.rstn     (1'b1),
-	.clk_in   (clk_12m),
-	.clk_out  (clk_100m),
-	.rst_out  (rst)
+	.rstn      (1'b1),
+	.clk_in    (clk_12m),
+	.clk_100m  (clk_100m),
+	.rst_100m  (rst)
+	.clk_25m   (clk_25m),
 );
+
+// testing MII
+logic [3:0]  mii_rx_dat_reg;
+logic        mii_rx_val_reg;
+logic        mii_rx_clk_reg;
+
+always @ (posedge clk_100m) begin
+	mii_rx_dat_reg <= mii_rx_dat;
+	mii_rx_val_reg <= mii_rx_val;
+	mii_rx_clk_reg <= mii_rx_clk;
+end
+
+
 
 logic rx_val;
 logic [7:0] rx_dat;
@@ -129,16 +144,10 @@ fixed_driver #(
 	.drv1    (drv1)
 );
 
-// monitor p10 output 
-// user input is reflected via ram interface
-
 always @ (posedge clk_100m) begin
 	prm_addr <= (prm_addr == ADDR_STOP) ? 0 : prm_addr + 1;
 	cur_addr <= prm_addr;
 	case (cur_addr)
-		ADDR_MOD_FREQ : begin
-			mod_freq <= 
-		end
 		ADDR_FREQ : begin
 			freq <= prm_ram_q;
 		end
