@@ -1,4 +1,3 @@
-
 parameter int ADDR_FREQ     = 0;
 parameter int ADDR_DUTY     = 1;
 parameter int ADDR_PHASE    = 2;

@@ -1,3 +1,6 @@
 [submodule "hdl_generics"]
 	path = hdl_generics
 	url = https://github.com/hypernyan/hdl_generics
+[submodule "p10"]
+	path = p10
+	url = https://github.com/hypernyan/p10
