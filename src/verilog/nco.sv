@@ -35,8 +35,8 @@ initial begin
 `ifdef SIMULATION
   f = $fopen(LUT_FILENAME, "w");
 
-  @(negedge ifc.rst);
-  @(posedge ifc.clk_a);
+  // @(negedge ifc.rst);
+  // @(posedge ifc.clk_a);
 
   for (i = 0; i<2**ADDR_WIDTH; i=i+1) begin
     $fwrite(f,"%b\n",width_t'($rtoi((2**DATA_WIDTH-1)*$sin(0.5*`PI*$itor(i)/$itor(2**ADDR_WIDTH-1)))));
@@ -52,6 +52,7 @@ always @ (posedge ifc.clk_a) ifc.data_a <= rom [ifc.addr_a];
 always @ (posedge ifc.clk_b) ifc.data_b <= rom [ifc.addr_b];
 
 endmodule
+
 module nco #(
   parameter integer LUT_ADDR_BITS   = 8,             // Time precision
   parameter integer LUT_DATA_BITS   = 8,             // Amplitude precision ( half wave )
@@ -69,8 +70,7 @@ module nco #(
   output logic [PHASE_ACC_BITS-1:0] phase_acc // phase accumulator stores 2 bits to determine sine quarter period number
 );
 
-logic [1:0] quad_addr;
-logic [1:0] quad_data;
+logic [1:0] quad_addr, quad_data;
 
 // instantiate nco lut. Use dpsyncram to acquire sin and cos samples simultaneously
 nco_lut_if #(LUT_ADDR_BITS, LUT_DATA_BITS) nco_lut_if (.*);
@@ -82,7 +82,13 @@ assign nco_lut_if.clk_b = clk;
 assign nco_lut_if.rst   = rst;
 
 always_ff @ (posedge clk) begin
-  if (rst) phase_acc <= 0;
+  if (rst) begin
+    phase_acc <= 0;
+    nco_lut_if.addr_a <= 0;
+    nco_lut_if.addr_b <= 0;
+    quad_addr <= 0;
+    quad_data <= 0;
+  end
   else begin
 		phase_acc[PHASE_ACC_BITS-1:0] <= phase_acc[PHASE_ACC_BITS-1:0] + phase_inc[PHASE_ACC_BITS-2:0]; // increment phase accumulator
 		nco_lut_if.addr_a <= phase_acc[PHASE_ACC_BITS-3-:LUT_ADDR_BITS];  // sine
@@ -94,24 +100,30 @@ end
 
 // Create two's complement output
 always_ff @ (posedge clk) begin
-  case (quad_data)
-    (2'b00) : begin
-      I[LUT_DATA_BITS:0] <= {1'b0,  nco_lut_if.data_b[LUT_DATA_BITS-1:0]};
-      Q[LUT_DATA_BITS:0] <= {1'b0,  nco_lut_if.data_a[LUT_DATA_BITS-1:0]};
-    end
-    (2'b01) : begin
-      I[LUT_DATA_BITS:0] <= {1'b1, ~nco_lut_if.data_a[LUT_DATA_BITS-1:0]};
-      Q[LUT_DATA_BITS:0] <= {1'b0,  nco_lut_if.data_b[LUT_DATA_BITS-1:0]};
-    end
-    (2'b10) : begin
-      I[LUT_DATA_BITS:0] <= {1'b1, ~nco_lut_if.data_b[LUT_DATA_BITS-1:0]};
-      Q[LUT_DATA_BITS:0] <= {1'b1, ~nco_lut_if.data_a[LUT_DATA_BITS-1:0]};
-    end
-    (2'b11) : begin
-      I[LUT_DATA_BITS:0] <= {1'b0,  nco_lut_if.data_a[LUT_DATA_BITS-1:0]};
-      Q[LUT_DATA_BITS:0] <= {1'b1, ~nco_lut_if.data_b[LUT_DATA_BITS-1:0]};
-    end
-  endcase
+  if (rst) begin
+    I <= 0;
+    Q <= 0;
+  end
+  else begin
+    case (quad_data)
+      (2'b00) : begin
+        I[LUT_DATA_BITS:0] <= {1'b0,  nco_lut_if.data_b[LUT_DATA_BITS-1:0]};
+        Q[LUT_DATA_BITS:0] <= {1'b0,  nco_lut_if.data_a[LUT_DATA_BITS-1:0]};
+      end
+      (2'b01) : begin
+        I[LUT_DATA_BITS:0] <= {1'b1, ~nco_lut_if.data_a[LUT_DATA_BITS-1:0]};
+        Q[LUT_DATA_BITS:0] <= {1'b0,  nco_lut_if.data_b[LUT_DATA_BITS-1:0]};
+      end
+      (2'b10) : begin
+        I[LUT_DATA_BITS:0] <= {1'b1, ~nco_lut_if.data_b[LUT_DATA_BITS-1:0]};
+        Q[LUT_DATA_BITS:0] <= {1'b1, ~nco_lut_if.data_a[LUT_DATA_BITS-1:0]};
+      end
+      (2'b11) : begin
+        I[LUT_DATA_BITS:0] <= {1'b0,  nco_lut_if.data_a[LUT_DATA_BITS-1:0]};
+        Q[LUT_DATA_BITS:0] <= {1'b1, ~nco_lut_if.data_b[LUT_DATA_BITS-1:0]};
+      end
+    endcase
+  end
 end
 
 endmodule

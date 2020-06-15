@@ -13,6 +13,7 @@ add wave -noupdate -format Logic -radix unsigned tb/dut/*
 add wave -noupdate -divider -height 20 {NCO}
 
 add wave -noupdate -format analog-step -radix decimal -min -1024.0 -max +1024.0 -height 64 -color "Azure"  tb/dut/nco_inst/I
+add wave -noupdate -format Logic -radix unsigned tb/dut/nco_inst/*
 
 add wave -noupdate -divider -height 20 {driver}
 

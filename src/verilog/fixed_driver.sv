@@ -35,10 +35,11 @@ module fixed_driver #(
 
 localparam integer PHASE_ACC_BITS = $clog2((REF_CLK_HZ/FREQ_STEP_HZ)+1);
 
-logic [PHASE_ACC_BITS-1:0] phase_acc_drv0;
-logic [PHASE_ACC_BITS-1:0] phase_acc_drv1;
-logic [PHASE_ACC_BITS-1:0] period, period_prev;
-logic [PHASE_ACC_BITS-1:0] phase_shift;
+logic [PHASE_ACC_BITS-1:0] 
+  phase_acc_drv0, phase_acc_drv1,
+  period, period_prev,
+  phase_shift;
+
 logic [$clog2(DUTY_SCALE*REF_CLK_HZ/FREQ_STEP_HZ+1)-1:0] on_time;
 
 logic [PHASE_ACC_BITS+DUTY_BITS-1:0]  period_duty, period_duty_calc;
@@ -46,9 +47,11 @@ logic [PHASE_ACC_BITS+PHASE_BITS-1:0] period_phase, period_phase_calc;
 
 logic [DUTY_BITS-1:0]  duty_prev;
 logic [PHASE_BITS-1:0] phase_prev;
-logic [DUTY_BITS-1:0]  duty_calc_ctr;
-logic [PHASE_BITS-1:0] phase_calc_ctr;
-logic calc_pend;
+
+logic calc_pend,
+  mult_calc,
+  period_duty_rdy,
+  period_phase_rdy;
 
 enum logic [2:0] {idle_s, calc_s, upd_s} calc_fsm;
 
@@ -59,48 +62,60 @@ always @ (posedge clk) begin
 	  period_prev       <= 0;
     duty_prev         <= 0;
     phase_prev        <= 0;
-	  duty_calc_ctr     <= 0;
-    phase_calc_ctr    <= 0;
 	  period_phase_calc <= 0;
 	  period_duty_calc  <= 0;
+	  mult_calc         <= 0;
   end
-  case (calc_fsm)
-    idle_s : begin
-      if (!calc_pend) begin
-        period_prev <= period;
-        duty_prev   <= duty;
-        phase_prev  <= phase;
+  else begin
+    case (calc_fsm)
+      idle_s : begin
+         mult_calc <= 0;
+        //if (!calc_pend) begin
+          period_prev <= period;
+          duty_prev   <= duty;
+          phase_prev  <= phase;
+       // end
+        if (period != period_prev || duty != duty_prev || phase != phase_prev) calc_pend <= 1;
+        if (calc_pend && phase_acc_drv0 == 0) calc_fsm <= calc_s;
       end
-      if (period != period_prev || duty != duty_prev || phase != phase_prev) calc_pend <= 1;
-      if (calc_pend && phase_acc_drv0 == 0) begin
-        duty_calc_ctr <= duty;
-        phase_calc_ctr <= phase;
-        period_duty_calc <= 0;
-        period_phase_calc <= 0;
-        calc_fsm <= calc_s;
+      calc_s : begin
+        mult_calc <= 1;
+        calc_pend <= 0;
+        if (period_duty_rdy && period_phase_rdy) begin
+          period_duty <= period_duty_calc;
+          period_phase <= period_phase_calc;
+          calc_fsm <= idle_s;
+        end
       end
-    end
-    calc_s : begin
-      calc_pend <= 0;
-      if (duty_calc_ctr != 0) begin
-        period_duty_calc <= period_duty_calc + period; 
-        duty_calc_ctr <= duty_calc_ctr - 1;
-      end
-      if (phase_calc_ctr != 0) begin
-        period_phase_calc <= period_phase_calc + period; 
-        phase_calc_ctr <= phase_calc_ctr - 1;
-      end
-      if (duty_calc_ctr == 0 && phase_calc_ctr == 0) begin
-        period_duty <= period_duty_calc;
-        period_phase <= period_phase_calc;
-        calc_fsm <= idle_s;
-      end
-    end
-	  upd_s : begin
-      
-    end
-  endcase
+
+    endcase
+  end
 end
+
+mult #(
+  .W ((PHASE_ACC_BITS > DUTY_BITS) ? PHASE_ACC_BITS : DUTY_BITS)
+) period_duty_mult_inst (
+  .clk  (clk),
+  .rst  (rst),
+  .calc (mult_calc),
+  .a    (period),
+  .b    (duty),
+  .q    (period_duty_calc),
+  .rdy  (period_duty_rdy)
+);
+
+mult #(
+  .W ((PHASE_ACC_BITS > PHASE_BITS) ? PHASE_ACC_BITS : PHASE_BITS)
+) period_phase_mult_inst (
+  .clk  (clk),
+  .rst  (rst),
+  .calc (mult_calc),
+  .a    (period),
+  .b    (phase),
+  .q    (period_phase_calc),
+  .rdy  (period_phase_rdy)
+);
+
 
 int_divider #(PHASE_ACC_BITS) period_calc_inst (   
   .clk (clk),
@@ -113,7 +128,7 @@ int_divider #(PHASE_ACC_BITS) period_calc_inst (
 
 int_divider #(PHASE_ACC_BITS+DUTY_BITS) on_time_calc_inst (   
   .clk (clk),
-  .rst (rst),
+  .rst (!period_duty_rdy),
   .dvd (period_duty), // divident
   .dvs (DUTY_SCALE), // divisor
   .quo (on_time),
@@ -122,7 +137,7 @@ int_divider #(PHASE_ACC_BITS+DUTY_BITS) on_time_calc_inst (
 
 int_divider #(PHASE_ACC_BITS+PHASE_BITS) phase_calc_inst (   
   .clk (clk),
-  .rst (rst),
+  .rst (!period_phase_rdy),
   .dvd (period_phase), // divident
   .dvs (PHASE_SCALE), // divisor
   .quo (phase_shift),
