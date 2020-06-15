@@ -4,7 +4,7 @@ module vfd #(
   parameter NCO_PHASE_ACC_BITS = 24,
   parameter VFD_MOD_FREQ_BITS  = 8,
   parameter MOD_BITS           = 10,
-  parameter REF_CLK_HZ         = 200000,
+  parameter REF_CLK_HZ         = 200000000,
   parameter LUT_FILENAME = "nco_lut.txt"
 
 )
@@ -33,7 +33,7 @@ nco #(
   .clk (clk),
   .rst (rst),
 
-  .phase_inc (1000),
+  .phase_inc (10),
 
   .I (mod_tc),
   .Q (),
@@ -45,11 +45,27 @@ assign neg = mod_tc[MOD_BITS];
 
 assign mod = mod_tc[MOD_BITS] ? ~mod_tc[MOD_BITS-1:0] + 1 : mod_tc[MOD_BITS-1:0];
 
+localparam UPDATE_TICKS = 1000;
+logic recalc;
+logic [$clog2(UPDATE_TICKS+1)-1:0] upd_ctr;
+
+always @ (posedge clk) begin
+  if (rst) begin
+    upd_ctr <= 0;
+    recalc <= 0;
+  end
+  else begin
+    upd_ctr <= (upd_ctr == 0) ? UPDATE_TICKS : upd_ctr + 1;
+    recalc <= (upd_ctr == 0);
+  end
+end
+
 fixed_driver #(
 	.REF_CLK_HZ  (REF_CLK_HZ),
 	.MIN_FREQ_HZ (1),
-	.MAX_FREQ_HZ (100000),
-	.DUTY_BITS   (MOD_BITS-1),
+	.MAX_FREQ_HZ (1000000),
+	.DUTY_BITS   (MOD_BITS),
+	.DUTY_SCALE  (2**(MOD_BITS)),
 	.PHASE_SCALE (360)
 ) driver_inst (
 	.clk     (clk),
@@ -58,6 +74,8 @@ fixed_driver #(
 	.freq    (10000),
 	.duty    (mod),
 	.phase   (180),
+  .recalc_all (recalc),
+  .recalc_ph_dc (1'b0),
 	.pos     (pos),
 	.neg     (neg),
 

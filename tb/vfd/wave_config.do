@@ -18,6 +18,7 @@ add wave -noupdate -format Logic -radix unsigned tb/dut/nco_inst/*
 add wave -noupdate -divider -height 20 {driver}
 
 add wave -noupdate -format Logic -radix unsigned tb/dut/driver_inst/*
+add wave -noupdate -format Logic -radix unsigned tb/dut/driver_inst/period_duty_mult_inst/*
 
 
 

@@ -15,8 +15,8 @@ set library_file_list {
 			../../src/verilog/vfd.sv
 			../../src/verilog/nco.sv
 			../../src/verilog/fixed_driver.sv
-			../../../hdl_generics/src/mult.sv
-			../../../hdl_generics/src/int_divider.sv
+			../../hdl_generics/src/mult.sv
+			../../hdl_generics/src/int_divider.sv
 
 			tb.sv
 		}

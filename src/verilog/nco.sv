@@ -111,16 +111,16 @@ always_ff @ (posedge clk) begin
         Q[LUT_DATA_BITS:0] <= {1'b0,  nco_lut_if.data_a[LUT_DATA_BITS-1:0]};
       end
       (2'b01) : begin
-        I[LUT_DATA_BITS:0] <= {1'b1, ~nco_lut_if.data_a[LUT_DATA_BITS-1:0]};
+        I[LUT_DATA_BITS:0] <= {1'b1, ~nco_lut_if.data_a[LUT_DATA_BITS-1:0]+1};
         Q[LUT_DATA_BITS:0] <= {1'b0,  nco_lut_if.data_b[LUT_DATA_BITS-1:0]};
       end
       (2'b10) : begin
-        I[LUT_DATA_BITS:0] <= {1'b1, ~nco_lut_if.data_b[LUT_DATA_BITS-1:0]};
-        Q[LUT_DATA_BITS:0] <= {1'b1, ~nco_lut_if.data_a[LUT_DATA_BITS-1:0]};
+        I[LUT_DATA_BITS:0] <= {1'b1, ~nco_lut_if.data_b[LUT_DATA_BITS-1:0]+1};
+        Q[LUT_DATA_BITS:0] <= {1'b1, ~nco_lut_if.data_a[LUT_DATA_BITS-1:0]+1};
       end
       (2'b11) : begin
         I[LUT_DATA_BITS:0] <= {1'b0,  nco_lut_if.data_a[LUT_DATA_BITS-1:0]};
-        Q[LUT_DATA_BITS:0] <= {1'b1, ~nco_lut_if.data_b[LUT_DATA_BITS-1:0]};
+        Q[LUT_DATA_BITS:0] <= {1'b1, ~nco_lut_if.data_b[LUT_DATA_BITS-1:0]+1};
       end
     endcase
   end
