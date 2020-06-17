@@ -65,7 +65,7 @@ module top (
 	(* chip_pin = "B16" *) output logic drv1 // 
 );
 
-`include "../verilog/comm/driver_reg_map.sv"
+`include "../src/include/p10_reg_defines.sv"
 
 parameter int FREQ_BITS = 16;
 parameter int REFCLK_HZ = 200000000;
@@ -106,7 +106,7 @@ p10_serial #(
 );
 
 logic [31:0] freq, duty, phase;
-
+/*
 fixed_driver #(
 	.FREQ_STEP_HZ (1),
 	.REF_CLK_HZ   (100000000),
@@ -128,6 +128,23 @@ fixed_driver #(
 	.drv1_en (),
 	.drv1    (drv1)
 );
+*/
+vfd #(
+  .NCO_LUT_ADDR_BITS   (NCO_LUT_ADDR_BITS),  
+  .NCO_LUT_DATA_BITS   (NCO_LUT_DATA_BITS),  
+  .NCO_PHASE_ACC_BITS  (NCO_PHASE_ACC_BITS),
+  .VFD_MOD_FREQ_BITS   (VFD_MOD_FREQ_BITS),
+  .MOD_BITS            (MOD_BITS),
+  .REF_CLK_HZ          (REF_CLK_HZ)
+) vfd_inst (
+  .clk (clk_100m),
+  .rst (rst_100m),
+
+  .mod_freq (mod_freq),
+  
+  .drv ()
+);
+
 
 // monitor p10 output 
 // user input is reflected via ram interface
@@ -137,7 +154,7 @@ always @ (posedge clk_100m) begin
 	cur_addr <= prm_addr;
 	case (cur_addr)
 		ADDR_MOD_FREQ : begin
-			mod_freq <= 
+			mod_freq <= prm_ram_q;
 		end
 		ADDR_FREQ : begin
 			freq <= prm_ram_q;

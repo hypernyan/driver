@@ -1,10 +1,8 @@
-parameter int ADDR_FREQ     = 0;
-parameter int ADDR_DUTY     = 1;
-parameter int ADDR_PHASE    = 2;
-parameter int ADDR_OCD      = 3;
-parameter int ADDR_DEADTIME = 4;
-parameter int ADDR_CURRENT  = 5;
-parameter int ADDR_STOP     = ADDR_CURRENT;
+`ifndef P10_ROM
+`define P10_ROM
+import p10_pkg_common::*;
+prm_entry_t prm_rom [0:PRM_COUNT-1];
+`endif
 
 prm_rom[ADDR_FREQ].prm     = "freq";
 prm_rom[ADDR_FREQ].min     = 0;

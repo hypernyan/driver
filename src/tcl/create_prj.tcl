@@ -1,17 +1,19 @@
 proc findFiles { basedir pattern } {
-
-    set basedir [string trimright [file join [file normalize $basedir] { }]]
     set fileList {}
-	
-    foreach fileName [glob -nocomplain -type {f r} -path $basedir $pattern] {
-        lappend fileList $fileName
-    }	
-	
-    foreach dirName [glob -nocomplain -type {d  r} -path $basedir *] {
-        set subDirList [findFiles $dirName $pattern]
-        if { [llength $subDirList] > 0 } {
-            foreach subDirFile $subDirList {
-				lappend fileList $subDirFile
+    set x {}
+    foreach x $basedir {
+        set x [string trimright [file join [file normalize $x] { }]]
+    
+        foreach fileName [glob -nocomplain -type {f r} -path $x $pattern] {
+            lappend fileList $fileName
+        }	
+    
+        foreach dirName [glob -nocomplain -type {d  r} -path $x *] {
+            set subDirList [findFiles $dirName $pattern]
+            if { [llength $subDirList] > 0 } {
+                foreach subDirFile $subDirList {
+	    			lappend fileList $subDirFile
+                }
             }
         }
     }
@@ -43,19 +45,8 @@ proc relTo {targetfile currentpath} {
   return [eval file join $prefix $tt]
 }
 
-proc srcfilesafe {filename args} {
-    global argv
-    
-    set save $argv
-    set argv $args
-    set rc [catch {source $filename} ret]
-    set argv $save
-    return -code $rc $ret
-}
-
 set TclPath [file dirname [file normalize [info script]]]
 set NewLoc [string range $TclPath 0 [string last / $TclPath]-5]
-
 
 set FamilyDev "Cyclobn 10 LP"
 set PartDev "10CL025YU256C8G"
@@ -65,28 +56,34 @@ set FlashLoadDev "10CL025Y"
 set PrjDir  [string range $TclPath 0 [string last / $NewLoc]-1]
 puts "Project location is: $PrjDir"
 
-set TopName [string range $NewLoc    [string last / $NewLoc]+1 end]
-
+set TopName [string range $NewLoc [string last / $NewLoc]+1 end]
 set PrjName $TopName.qpf
 set TopDir $PrjDir/$TopName
-set SrcDir $PrjDir/$TopName/src
+
+lappend SrcDir $PrjDir/$TopName/src/top
+lappend SrcDir $PrjDir/$TopName/src/verilog
+lappend SrcDir $PrjDir/$TopName/p10/src
+lappend SrcDir $PrjDir/$TopName/hdl_generics/src
+
 set QuartusNm "quartus"
+set SrcIncDir  $PrjDir/$TopName/src/include
 set QuartusDir $PrjDir/$TopName/$QuartusNm
 
 cd $PrjDir/$TopName
-pwd
 
 if {[file exists $QuartusNm] == 1} { file delete -force $QuartusNm }
 file mkdir $QuartusNm
 cd $QuartusDir
 
-set SrcVHD [findFiles $SrcDir "*.vhd"]
-set SrcV   [findFiles $SrcDir "*.v"  ]
-set SrcSV  [findFiles $SrcDir "*.sv" ]
-set SrcQIP [findFiles $SrcDir "*.qip"]
-set SrcMIF [findFiles $SrcDir "*.mif"]
-set SrcSDC [findFiles $SrcDir "*.sdc"]
+set SrcIncSV [findFiles $SrcIncDir "*.svh" ]
+set SrcVHD   [findFiles $SrcDir "*.vhd"]
+set SrcV     [findFiles $SrcDir "*.v"  ]
+set SrcSV    [findFiles $SrcDir "*.sv" ]
+set SrcQIP   [findFiles $SrcDir "*.qip"]
+set SrcMIF   [findFiles $SrcDir "*.mif"]
+set SrcSDC   [findFiles $SrcDir "*.sdc"]
 
+set SrcIncSV_rel {}
 set SrcVHD_rel {}
 set SrcV_rel   {}
 set SrcSV_rel  {}
@@ -95,6 +92,11 @@ set SrcMIF_rel {}
 set SrcSDC_rel {}
 
 set x {}
+
+foreach x $SrcIncSV {
+	set x [relTo $x $QuartusDir]
+	lappend SrcIncSV_rel $x
+}
 
 foreach x $SrcVHD {
 	set x [relTo $x $QuartusDir]
@@ -128,6 +130,12 @@ foreach x $SrcSDC {
 
 project_new $TopName -family $FamilyDev -part $PartDev -overwrite
 project_open $TopName
+
+set CurrentFile { } 
+foreach CurrentFile $SrcIncSV_rel {
+	set_global_assignment -name SYSTEMVERILOG_FILE $CurrentFile
+	puts "Adding include search path for SV files: $CurrentFile"
+}
 
 set CurrentFile { } 
 foreach CurrentFile $SrcVHD_rel {
