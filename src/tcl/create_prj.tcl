@@ -133,7 +133,8 @@ project_open $TopName
 
 set CurrentFile { } 
 foreach CurrentFile $SrcIncSV_rel {
-	set_global_assignment -name SYSTEMVERILOG_FILE $CurrentFile
+	# set_global_assignment -name SYSTEMVERILOG_FILE $CurrentFile
+   # set_global_assignment -name SEARCH_PATH $SrcDir/include
 	puts "Adding include search path for SV files: $CurrentFile"
 }
 

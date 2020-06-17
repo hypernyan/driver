@@ -13,7 +13,7 @@ set library_file_list {
 		}
 		test_library {
 			../../src/verilog/vfd.sv
-			../../src/verilog/nco.sv
+			../../hdl_generics/src/nco.sv
 			../../src/verilog/fixed_driver.sv
 			../../hdl_generics/src/mult.sv
 			../../hdl_generics/src/int_divider.sv

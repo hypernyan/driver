@@ -65,19 +65,22 @@ module top (
 	(* chip_pin = "B16" *) output logic drv1 // 
 );
 
-`include "../src/include/p10_reg_defines.sv"
+`include "../../src/verilog/p10_reg_defines.sv"
 
 parameter int FREQ_BITS = 16;
 parameter int REFCLK_HZ = 200000000;
 parameter int ADC_BITS  = 8;
 parameter bit DEFAULT_STATE = 0;
-
+/*
 reset_controller reset_controller_inst(
 	.rstn     (1'b1),
 	.clk_in   (clk_12m),
 	.clk_out  (clk_100m),
 	.rst_out  (rst)
 );
+*/
+
+assign clk_100m = clk_12m;
 
 logic rx_val;
 logic [7:0] rx_dat;
@@ -129,13 +132,22 @@ fixed_driver #(
 	.drv1    (drv1)
 );
 */
+
+parameter NCO_LUT_ADDR_BITS  = 8;  
+parameter NCO_LUT_DATA_BITS  = 8; 
+parameter NCO_PHASE_ACC_BITS = 24;
+parameter VFD_MOD_FREQ_BITS  = 8;
+parameter MOD_BITS           = 10;
+parameter REF_CLK_HZ         = 100000000;
+
 vfd #(
   .NCO_LUT_ADDR_BITS   (NCO_LUT_ADDR_BITS),  
   .NCO_LUT_DATA_BITS   (NCO_LUT_DATA_BITS),  
   .NCO_PHASE_ACC_BITS  (NCO_PHASE_ACC_BITS),
   .VFD_MOD_FREQ_BITS   (VFD_MOD_FREQ_BITS),
   .MOD_BITS            (MOD_BITS),
-  .REF_CLK_HZ          (REF_CLK_HZ)
+  .REF_CLK_HZ          (REF_CLK_HZ),
+  .LUT_FILENAME        ("../../src/verilog/nco_lut.txt")
 ) vfd_inst (
   .clk (clk_100m),
   .rst (rst_100m),
