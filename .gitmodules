@@ -4,3 +4,6 @@
 [submodule "p10"]
 	path = p10
 	url = https://github.com/hypernyan/p10
+[submodule "eth_vlg"]
+	path = eth_vlg
+	url = https://github.com/hypernyan/eth_vlg.git
