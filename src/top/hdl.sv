@@ -24,29 +24,29 @@
 
 
 `define SIMULATION
-
 module top (
-	(* chip_pin = "M2" *) input  logic clk_12m,
+//	`ifdef TARGET_CYC1000
+//	(* chip_pin = "M2" *) input  logic clk_12m,
 	//(* chip_pin = "H5" *) input  logic ext_rstn,
 
-	output logic [3:0] drv, // J5.7
+//	output logic [3:0] drv, // J5.7
 
 	//input  logic uart_rxd, // FTDI
 	//output logic uart_txd,
 
-	(* chip_pin = "T15, R14, P14, T14, R13, T13, R12, P11" *) input  logic [7:0] adc,
-	(* chip_pin = "T12" *) output logic adc_clk, // 100 MHz ADC sampling clock
-
-	(* chip_pin = "J14" *) output logic spi_csn, // AGC pot SPI
-	(* chip_pin = "K16" *) output logic spi_sda,
-	(* chip_pin = "K15" *) output logic spi_scl,
-
-	(* chip_pin = "F13" *) inout  logic i2c_sda, // ina219
-	(* chip_pin = "D15" *) output logic i2c_scl,
-
-	(* chip_pin = "F15" *) output logic mdc,  // PHY
-	(* chip_pin = "C15" *) inout  logic mdio,
-
+//	(* chip_pin = "T15, R14, P14, T14, R13, T13, R12, P11" *) input  logic [7:0] adc,
+//	(* chip_pin = "T12" *) output logic adc_clk, // 100 MHz ADC sampling clock
+//
+//	(* chip_pin = "J14" *) output logic spi_csn, // AGC pot SPI
+//	(* chip_pin = "K16" *) output logic spi_sda,
+//	(* chip_pin = "K15" *) output logic spi_scl,
+//
+//	(* chip_pin = "F13" *) inout  logic i2c_sda, // ina219
+//	(* chip_pin = "D15" *) output logic i2c_scl,
+//
+//	(* chip_pin = "F15" *) output logic mdc,  // PHY
+//	(* chip_pin = "C15" *) inout  logic mdio,
+//
 //	(* chip_pin = "L2, P1" *) input logic [1:0] mii_rx_dat,
 //	(* chip_pin = "R1" *)     input logic       mii_rx_val,
 //	(* chip_pin = "K2" *)     input logic       mii_rx_clk,
@@ -55,61 +55,70 @@ module top (
 //	(* chip_pin = "R1" *)     output logic       mii_tx_valid,
 //	(* chip_pin = "K2" *)     output logic       mii_tx_clk,
 
-	(* chip_pin = "T7" *) output logic uart_txd,  // fsdi
-	(* chip_pin = "R7" *) input  logic uart_rxd,  // clk
-	(* chip_pin = "R6" *) input  logic rtsn, // fsdo
-	(* chip_pin = "T6" *) output logic ctsn, // 
-	(* chip_pin = "R5" *) input  logic DTR,  // 
-	(* chip_pin = "T5" *) output logic DSR,   // 
-	(* chip_pin = "C16" *) output logic drv0, // 
-	(* chip_pin = "B16" *) output logic drv1 // 
+//	(* chip_pin = "T7" *) output logic uart_txd,  // fsdi
+//	(* chip_pin = "R7" *) input  logic uart_rxd,  // clk
+//	(* chip_pin = "R6" *) input  logic rtsn, // fsdo
+//	(* chip_pin = "T6" *) output logic ctsn, // 
+//	(* chip_pin = "R5" *) input  logic DTR,  // 
+//	(* chip_pin = "T5" *) output logic DSR,   // 
+//	(* chip_pin = "C16" *) output logic drv0, // 
+//	(* chip_pin = "B16" *) output logic drv1 // 
+//	`endif // TARGET_CYC1000
+//	`ifdef TARGET_DE0_NANO
+//	(* chip_pin = "M2" *) input  logic clk_50m
+
+//	`endif // TARGET_DE0_NANO
+ 
+	// Ethernet
+	(* chip_pin = "J22" *) output logic phy_gtx_clk,
+	(* chip_pin = "D22" *) input  logic phy_rx_clk, 
+
+	(* chip_pin = "W22" *) output logic phy_tx_err, 
+	(* chip_pin = "M21" *) output logic phy_tx_val, 
+	(* chip_pin = "W21, V22, V21, U22, R22, R21, P22, M22" *) output logic [7:0] phy_tx_dat, 
+
+	(* chip_pin = "H21" *) input  logic phy_rx_err, 
+	(* chip_pin = "B21" *) input  logic phy_rx_val,
+	(* chip_pin = "F22, F21, E22, E21, D21, C22, C21, B22" *) input logic [7:0] phy_rx_dat,
+
+	(* chip_pin = "Y21" *) output logic mdc,
+	(* chip_pin = "Y22" *) output logic mdio,
+
+	(* chip_pin = "P3" *)  output logic reset_n,
+	(* chip_pin = "P21" *) output logic phy_rst_n,
+    // Ethernet connections
+    (* chip_pin = "W17, Y17" *) output logic [1:0] led,
+    // RHD SPI
+    (* chip_pin = "B8" *)  output logic drv0,
+    (* chip_pin = "B9" *)  output logic drv1
 );
+
+parameter int NCO_LUT_ADDR_BITS  = 8;  
+parameter int NCO_LUT_DATA_BITS  = 8; 
+parameter int NCO_PHASE_ACC_BITS = 24;
+parameter int VFD_MOD_FREQ_BITS  = 8;
+parameter int MOD_BITS           = 10;
+parameter int REF_CLK_HZ         = 125000000;
+parameter int FREQ_BITS          = 16;
+parameter int REFCLK_HZ          = 200000000;
+parameter int ADC_BITS           = 8;
+parameter bit DEFAULT_STATE      = 0;
 
 `include "../../src/verilog/p10_reg_defines.sv"
 
-parameter int FREQ_BITS = 16;
-parameter int REFCLK_HZ = 200000000;
-parameter int ADC_BITS  = 8;
-parameter bit DEFAULT_STATE = 0;
-/*
-reset_controller reset_controller_inst(
-	.rstn     (1'b1),
-	.clk_in   (clk_12m),
-	.clk_out  (clk_100m),
-	.rst_out  (rst)
-);
-*/
 
-assign clk_100m = clk_12m;
+ram_if_sp #(.AW(8), .DW(32)) ram (.*);
+settings_t settings;
+exec #(.PRM_COUNT(P10_PRM_COUNT)) exec_if(.*);
+rhd_cmd_if commands (.*);
 
-logic rx_val;
-logic [7:0] rx_dat;
+assign clk = phy_rx_clk;
+assign ram.clk = clk;
 
-logic [7:0] prm_addr, cur_addr;
-logic [31:0] prm_ram_d;
-logic [31:0] prm_ram_q;
-logic [31:0] prm_ram_w;
+////////////
+// Driver //
+////////////
 
-p10_serial #(
-   .REFCLK_MHZ   (100),
-   .BAUDRATE     (57600),
-   .PARITY_EN    (0),
-   .PARITY_EVEN  (1)
-) p10_serial_inst
-(
-   .clk (clk_100m),
-   .rst (rst),
-   .rx  (uart_rxd),
-   .tx  (uart_txd),
- 
-    .prm_addr  (prm_addr),
-    .prm_ram_d (prm_ram_d),
-    .prm_ram_q (prm_ram_q),
-    .prm_ram_w (prm_ram_w)   
-);
-
-logic [31:0] freq, duty, phase;
-/*
 fixed_driver #(
 	.FREQ_STEP_HZ (1),
 	.REF_CLK_HZ   (100000000),
@@ -118,28 +127,16 @@ fixed_driver #(
 	.DUTY_SCALE   (100),
 	.PHASE_SCALE  (360) // Don't exceed PHASE_SCALE - 1 on phase input (E.g. don't assert more then 359 when PHASE_SCALE is 360)
 ) fixed_driver_inst (
-	.clk     (clk_100m),
+	.clk     (clk),
 	.rst     (rst),
 
-	.freq    (freq),
-	.duty    (duty),
-	.phase   (phase),
+	.settings (settings),
+	.commands (commands),
 
-	.drv0_en (),
-	.drv0    (drv0),
-
-	.drv1_en (),
-	.drv1    (drv1)
+	.drv({drv1, drv0})
 );
-*/
 
-parameter NCO_LUT_ADDR_BITS  = 8;  
-parameter NCO_LUT_DATA_BITS  = 8; 
-parameter NCO_PHASE_ACC_BITS = 24;
-parameter VFD_MOD_FREQ_BITS  = 8;
-parameter MOD_BITS           = 10;
-parameter REF_CLK_HZ         = 100000000;
-
+/*
 vfd #(
   .NCO_LUT_ADDR_BITS   (NCO_LUT_ADDR_BITS),  
   .NCO_LUT_DATA_BITS   (NCO_LUT_DATA_BITS),  
@@ -149,44 +146,93 @@ vfd #(
   .REF_CLK_HZ          (REF_CLK_HZ),
   .LUT_FILENAME        ("../../src/verilog/nco_lut.txt")
 ) vfd_inst (
-  .clk (clk_100m),
+  .clk (clk),
   .rst (rst_100m),
 
   .mod_freq (mod_freq),
   
   .drv ()
 );
+*/
 
+//////////////
+// Ethernet //
+//////////////
 
-// monitor p10 output 
-// user input is reflected via ram interface
+eth_vlg #(
+  .MAC_ADDR             (48'h107b444fd012),
+  .IPV4_ADDR            (32'hc0a800d5),
+  .N_TCP                (1),
+  .MTU                  (32'd1500),
+  .TCP_RETRANSMIT_TICKS (32'd1000000),
+  .TCP_RETRANSMIT_TRIES (32'd5),
+  .TCP_RAM_DEPTH        (32'd12),
+  .TCP_PACKET_DEPTH     (32'd4),
+  .TCP_WAIT_TICKS       (32'd200))
+eth_vlg_inst (
+	.phy_rx (phy_rx),
+	.phy_tx (phy_tx),
 
-always @ (posedge clk_100m) begin
-	prm_addr <= (prm_addr == ADDR_STOP) ? 0 : prm_addr + 1;
-	cur_addr <= prm_addr;
-	case (cur_addr)
-		ADDR_MOD_FREQ : begin
-			mod_freq <= prm_ram_q;
-		end
-		ADDR_FREQ : begin
-			freq <= prm_ram_q;
-		end
-		ADDR_DUTY : begin
-			duty <= prm_ram_q;
-		end
-		ADDR_PHASE : begin
-			phase <= prm_ram_q;
-		end
-		ADDR_OCD : begin
+	.clk    (clk),
+	.rst    (rst),
 
-		end
-		ADDR_DEADTIME : begin
+	.tcp_din (tcp_din),
+	.tcp_vin (tcp_vin),
+	.tcp_snd (tcp_snd),
+	.tcp_cts (tcp_cts),
 
-		end
-		ADDR_CURRENT : begin
+	.tcp_dout (tcp_dout),
+	.tcp_vout (tcp_vout),
 
-		end
-	endcase
-end
+	.connect   (1'b0),
+	.connected (connected),
+	.listen    (1'b1),
+	.loc_port  (16'd1000),
+	.rem_ipv4  (32'b0),
+	.rem_port  (16'b0)
+);
+
+assign phy_rx.d = phy_rx_dat;
+assign phy_rx.v = phy_rx_val;
+assign phy_rx.e = phy_rx_err;
+
+assign phy_tx_dat  = phy_tx.d;
+assign phy_tx_val  = phy_tx.v;
+assign phy_tx_err  = phy_tx.e;
+assign phy_gtx_clk = phy_rx_clk;
+
+//////////////////
+// P10 instance //
+//////////////////
+
+p10 p10_inst (
+  .clk (clk),
+  .rst (rst),
+
+  .rxd (tcp_dout0),
+  .rxv (tcp_vout0),
+
+  .txd (tcp_din0),
+  .txv (tcp_vin0),
+  .cts (tcp_cts0),
+ 
+  .ram     (ram),
+  .exec_if (exec_if)
+);
+
+// Convert "parameter ram contents" to "settings" and "executive interface"
+// to "commands" understandable by "module rhd ();"
+
+p10_ctrl p10_ctrl_inst (
+  .clk (clk),
+  .rst (rst),
+
+  .ram       (ram),
+  .exec_if   (exec_if),   // req-> <-rsp
+  .connected (connected),  // <-in
+
+  .settings (settings), // out->
+  .commands (commands)  // out->
+);
 
 endmodule

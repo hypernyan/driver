@@ -18,7 +18,7 @@
 #
 # Quartus Prime
 # Version 18.1.0 Build 625 09/12/2018 SJ Lite Edition
-# Date created = 23:51:46  June 17, 2020
+# Date created = 19:35:23  September 06, 2020
 #
 # -------------------------------------------------------------------------- #
 #
@@ -40,7 +40,7 @@ set_global_assignment -name FAMILY "Cyclone 10 LP"
 set_global_assignment -name DEVICE 10CL025YU256C8G
 set_global_assignment -name TOP_LEVEL_ENTITY top
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 18.1.0
-set_global_assignment -name PROJECT_CREATION_TIME_DATE "23:51:46  JUNE 17, 2020"
+set_global_assignment -name PROJECT_CREATION_TIME_DATE "19:35:23  SEPTEMBER 06, 2020"
 set_global_assignment -name LAST_QUARTUS_VERSION "18.1.0 Lite Edition"
 set_global_assignment -name VERILOG_FILE ../src/verilog/uart.v
 set_global_assignment -name VERILOG_FILE ../src/verilog/uart_rx.v
@@ -53,13 +53,17 @@ set_global_assignment -name SYSTEMVERILOG_FILE ../src/verilog/display.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../src/verilog/fixed_driver.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../src/verilog/hilbert_transform.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../src/verilog/manual_control.sv
+set_global_assignment -name SYSTEMVERILOG_FILE ../src/verilog/p10_ctrl.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../src/verilog/p10_reg_defines.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../src/verilog/p10_reg_rom.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../src/verilog/p10_serial.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../src/verilog/qcw.sv
+set_global_assignment -name SYSTEMVERILOG_FILE ../src/verilog/reset_controller.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../src/verilog/vfd.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../p10/src/p10.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../hdl_generics/src/bin2bcd.sv
+set_global_assignment -name SYSTEMVERILOG_FILE ../hdl_generics/src/buf_mng.sv
+set_global_assignment -name SYSTEMVERILOG_FILE ../hdl_generics/src/crc32.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../hdl_generics/src/debouncer.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../hdl_generics/src/encoder.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../hdl_generics/src/fifo.sv
@@ -70,13 +74,10 @@ set_global_assignment -name SYSTEMVERILOG_FILE ../hdl_generics/src/mult.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../hdl_generics/src/nco.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../hdl_generics/src/onehot.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../hdl_generics/src/ram.sv
+set_global_assignment -name SYSTEMVERILOG_FILE ../hdl_generics/src/stretch.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../hdl_generics/src/sum.sv
 set_global_assignment -name SDC_FILE ../src/top/constraints.sdc
 set_global_assignment -name FMAX_REQUIREMENT "125 MHz"
 set_global_assignment -name TIMING_ANALYZER_MULTICORNER_ANALYSIS ON
 set_global_assignment -name SMART_RECOMPILE ON
 set_global_assignment -name NUM_PARALLEL_PROCESSORS 6
-set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
-set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
-set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
-set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
