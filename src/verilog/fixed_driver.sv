@@ -10,7 +10,7 @@ module fixed_driver #(
   parameter longint DUTY_SCALE    = 100,
   parameter longint PHASE_SCALE   = 360, // Don't exceed PHASE_SCALE - 1 on phase input (E.g. don't assert more then 359 when PHASE_SCALE is 360)
   parameter longint DEADTIME_BITS = 100,
-  parameter longint FREQ_BITS     = $clog2(((MAX_FREQ_HZ-MIN_FREQ_HZ)/FREQ_STEP_HZ)+1), // Calculate bits needed to encode driver's output frequency
+  parameter longint FREQ_BITS     = $clog2(MAX_FREQ_HZ+1), // Calculate bits needed to encode driver's output frequency
   parameter longint DUTY_BITS     = $clog2(DUTY_SCALE+1),
   parameter longint PHASE_BITS    = $clog2(PHASE_SCALE+1) // 0.1 deg resolution
 )
@@ -19,25 +19,20 @@ module fixed_driver #(
   input logic  rst,
 
   // Parameters for fixed operation
-  input logic [FREQ_BITS-1:0]  freq,
-  input logic [DUTY_BITS-1:0]  duty,
-  input logic [PHASE_BITS-1:0] phase,
-  input logic [DEADTIME_BITS-1:0] deadtime,
-  input logic recalc_all, 
-  input logic recalc_ph_dc, 
+  cmd_if.in cmd,
+  input settings_t settings,
+
+  input logic recalc_all,
+  input logic recalc_ph_dc,
 
   input logic pos,
   input logic neg,
 
-  output logic drv0_en,
-  output logic drv0,
-
-  output logic drv1_en,
-  output logic drv1
+  output logic [1:0] drv
 );
 
 localparam integer PHASE_ACC_BITS = $clog2((REF_CLK_HZ/FREQ_STEP_HZ)+1);
-localparam integer COMMON_BIW_W   = (PHASE_ACC_BITS >= ((DUTY_BITS >= PHASE_BITS) ? DUTY_BITS : PHASE_BITS)) ? PHASE_ACC_BITS : ((DUTY_BITS >= PHASE_BITS) ? DUTY_BITS : PHASE_BITS);
+localparam integer COMMON_BIT_W   = (PHASE_ACC_BITS >= ((DUTY_BITS >= PHASE_BITS) ? DUTY_BITS : PHASE_BITS)) ? PHASE_ACC_BITS : ((DUTY_BITS >= PHASE_BITS) ? DUTY_BITS : PHASE_BITS);
 
 logic [PHASE_ACC_BITS-1:0] 
   phase_acc_drv0, phase_acc_drv1,
@@ -52,7 +47,7 @@ logic [PHASE_ACC_BITS+PHASE_BITS-1:0] period_phase;
 logic [DUTY_BITS-1:0]  duty_prev;
 logic [PHASE_BITS-1:0] phase_prev;
 
-logic  mult_cal,
+logic mult_cal,
   period_duty_rdy,
   phase_rdy,
   period_phase_rdy,
@@ -66,16 +61,17 @@ enum logic [3:0] {idle_s, calc_period_s, calc_mult_s, calc_scale_s} fsm;
 
 always_ff @ (posedge clk) begin
   if (rst) begin
-	  fsm               <= idle_s;
-	  mult_cal          <= 0;
-	  period_cal        <= 0;
-    updated <= 0;
+	  fsm        <= idle_s;
+	  mult_cal   <= 0;
+	  period_cal <= 0;
+    updated    <= 0;
   end
   else begin
     case (fsm)
       idle_s : begin
+        cmd.apply_ok <= 0;
         updated <= 0;
-        if (recalc_all) begin
+        if (cmd.apply) begin
           fsm <= calc_period_s;
           period_cal <= 1;
         end
@@ -105,6 +101,7 @@ always_ff @ (posedge clk) begin
       calc_scale_s : begin
           div_cal <= 0;
           if (on_time_rdy && phase_rdy) begin
+            cmd.apply_ok <= 1;
             fsm <= idle_s;
             updated <= 1;
           end
@@ -122,7 +119,7 @@ int_divider #(PHASE_ACC_BITS) period_calc_inst (
   .rst (rst),
   .cal (period_cal),
   .dvd (REF_CLK_HZ/FREQ_STEP_HZ), // divident
-  .dvs ({{(PHASE_ACC_BITS-FREQ_BITS){1'b0}}, freq}), // divisor
+  .dvs ({{(PHASE_ACC_BITS-FREQ_BITS){1'b0}}, settings.freq}), // divisor
   .quo (period),
   .rdy (period_rdy)
 );
@@ -131,13 +128,13 @@ int_divider #(PHASE_ACC_BITS) period_calc_inst (
 // Compute period*phase to shift phase by a number of clock ticks
 
 mult #(
-  .W (COMMON_BIW_W)
+  .W (COMMON_BIT_W)
 ) period_phase_mult_inst (
   .clk  (clk),
   .rst  (rst),
   .cal  (mult_cal),
-  .a    ({{(COMMON_BIW_W-DUTY_BITS){1'b0}}, period}),
-  .b    ({{(COMMON_BIW_W-PHASE_BITS){1'b0}}, phase}),
+  .a    ({{(COMMON_BIT_W-DUTY_BITS){1'b0}}, period}),
+  .b    ({{(COMMON_BIT_W-PHASE_BITS){1'b0}}, settings.phase}),
   .q    (period_phase),
   .rdy  (period_phase_rdy)
 );
@@ -146,13 +143,13 @@ mult #(
 // Compute period*duty 
 
 mult #(
-  .W (COMMON_BIW_W)
+  .W (COMMON_BIT_W)
 ) period_duty_mult_inst (
   .clk  (clk),
   .rst  (rst),
   .cal  (mult_cal),
-  .a    ({{(COMMON_BIW_W-PHASE_ACC_BITS){1'b0}}, period}),
-  .b    ({{(COMMON_BIW_W-DUTY_BITS){1'b0}}, duty}),
+  .a    ({{(COMMON_BIT_W-PHASE_ACC_BITS){1'b0}}, period}),
+  .b    ({{(COMMON_BIT_W-DUTY_BITS){1'b0}}, settings.duty}),
   .q    (period_duty),
   .rdy  (period_duty_rdy)
 );
@@ -160,7 +157,7 @@ mult #(
 // STEP 3a, 3b:
 // Scale 2b and 2c results. Acquire actual values in clock ticks
 
-int_divider #(PHASE_ACC_BITS+DUTY_BITS) on_time_calc_inst (   
+int_divider #(PHASE_ACC_BITS+DUTY_BITS) on_time_calc_inst (
   .clk (clk),
   .rst (rst),
   .cal (div_cal),
@@ -187,8 +184,7 @@ always @ (posedge clk) begin
     cur_period <= 0;
     phase_acc_drv0 <= 0;
     phase_acc_drv1 <= 0;
-    drv0 <= 0;
-    drv1 <= 0;
+    drv <= 0;
   end
   else begin
     if (updated) begin
@@ -200,8 +196,8 @@ always @ (posedge clk) begin
     phase_acc_drv0 <= (phase_acc_drv0 == cur_period) ? 0 : phase_acc_drv0 + 1;
     // drv1 is shifted by calculated number of ticks
     phase_acc_drv1 <= (phase_acc_drv0 == cur_phase_shift) ? 0 : phase_acc_drv1 + 1;
-    if (phase_acc_drv0 >= cur_on_time) drv0 <= 0; else drv0 <= pos;
-    if (phase_acc_drv1 >= cur_on_time) drv1 <= 0; else drv1 <= neg;
+    if (phase_acc_drv0 >= cur_on_time) drv[0] <= 0; else drv[0] <= 1;//<= pos;
+    if (phase_acc_drv1 >= cur_on_time) drv[1] <= 0; else drv[1] <= 1;//<= neg;
   end
 end
 

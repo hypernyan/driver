@@ -1,8 +1,10 @@
-parameter int ADDR_FREQ     = 0;
-parameter int ADDR_DUTY     = 1;
-parameter int ADDR_PHASE    = 2;
+parameter int ADDR_FREQ_HZ     = 0;
+parameter int ADDR_DUTY_PERCENT     = 1;
+parameter int ADDR_PHASE_DEGREE    = 2;
 parameter int ADDR_OCD      = 3;
 parameter int ADDR_DEADTIME = 4;
 parameter int ADDR_CURRENT  = 5;
 parameter int ADDR_MOD_FREQ  = 6;
-parameter int ADDR_STOP     = ADDR_CURRENT;
+parameter int ADDR_ENABLE     = 7;
+parameter int ADDR_DISABLE     = 8;
+parameter int ADDR_APPLY      = 9;

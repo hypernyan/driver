@@ -23,7 +23,8 @@
  */
 
 
-`define SIMULATION
+//`define SIMULATION
+import drv_pkg::*;
 module top (
 //	`ifdef TARGET_CYC1000
 //	(* chip_pin = "M2" *) input  logic clk_12m,
@@ -89,51 +90,60 @@ module top (
     // Ethernet connections
     (* chip_pin = "W17, Y17" *) output logic [1:0] led,
     // RHD SPI
-    (* chip_pin = "B8" *)  output logic drv0,
-    (* chip_pin = "B9" *)  output logic drv1
+    (* chip_pin = "A8, B8" *)  output logic [1:0] drv
 );
 
+parameter int P10_PRM_COUNT      = 32;
+parameter int REF_CLK_HZ         = 125000000;
 parameter int NCO_LUT_ADDR_BITS  = 8;  
 parameter int NCO_LUT_DATA_BITS  = 8; 
 parameter int NCO_PHASE_ACC_BITS = 24;
 parameter int VFD_MOD_FREQ_BITS  = 8;
 parameter int MOD_BITS           = 10;
-parameter int REF_CLK_HZ         = 125000000;
-parameter int FREQ_BITS          = 16;
-parameter int REFCLK_HZ          = 200000000;
+//parameter int FREQ_BITS          = 16;
 parameter int ADC_BITS           = 8;
-parameter bit DEFAULT_STATE      = 0;
 
 `include "../../src/verilog/p10_reg_defines.sv"
-
 
 ram_if_sp #(.AW(8), .DW(32)) ram (.*);
 settings_t settings;
 exec #(.PRM_COUNT(P10_PRM_COUNT)) exec_if(.*);
-rhd_cmd_if commands (.*);
+cmd_if cmd (.*);
+
+logic rst, rst_n;
+
+logic [1:0] connected;
+assign led[0] = ~connected;
+
+assign rst = ~rst_n;
+logic [15:0] rst_ctr;
+
+always @ (posedge clk) begin
+  rst_ctr <= rst_ctr + 1;
+  if (rst_ctr == '1) rst_n <= 1'b1;
+end
 
 assign clk = phy_rx_clk;
 assign ram.clk = clk;
-
+assign phy_rst_n = 1;
 ////////////
 // Driver //
 ////////////
 
 fixed_driver #(
 	.FREQ_STEP_HZ (1),
-	.REF_CLK_HZ   (100000000),
-	.MIN_FREQ_HZ  (1000),
-	.MAX_FREQ_HZ  (500000),
-	.DUTY_SCALE   (100),
-	.PHASE_SCALE  (360) // Don't exceed PHASE_SCALE - 1 on phase input (E.g. don't assert more then 359 when PHASE_SCALE is 360)
+	.REF_CLK_HZ   (125000000),
+	.MIN_FREQ_HZ  (0),
+	.MAX_FREQ_HZ  (MAX_FREQ),
+	.DUTY_SCALE   (DUTY_SCALE),
+	.PHASE_SCALE  (MAX_PHASE) // Don't exceed PHASE_SCALE - 1 on phase input (E.g. don't assert more then 359 when PHASE_SCALE is 360)
 ) fixed_driver_inst (
 	.clk     (clk),
 	.rst     (rst),
 
 	.settings (settings),
-	.commands (commands),
-
-	.drv({drv1, drv0})
+	.cmd      (cmd),
+	.drv      (drv)
 );
 
 /*
@@ -159,16 +169,32 @@ vfd #(
 // Ethernet //
 //////////////
 
+phy phy_rx(.*);
+phy phy_tx(.*);
+
+logic [7:0] tcp_din, tcp_dout;
+logic tcp_vin, tcp_vout;
+logic tcp_cts;
+
+assign phy_rx.d = phy_rx_dat;
+assign phy_rx.v = phy_rx_val;
+assign phy_rx.e = phy_rx_err;
+
+assign phy_tx_dat  = phy_tx.d;
+assign phy_tx_val  = phy_tx.v;
+assign phy_tx_err  = phy_tx.e;
+assign phy_gtx_clk = phy_rx_clk;
+
 eth_vlg #(
   .MAC_ADDR             (48'h107b444fd012),
   .IPV4_ADDR            (32'hc0a800d5),
   .N_TCP                (1),
-  .MTU                  (32'd1500),
-  .TCP_RETRANSMIT_TICKS (32'd1000000),
-  .TCP_RETRANSMIT_TRIES (32'd5),
-  .TCP_RAM_DEPTH        (32'd12),
-  .TCP_PACKET_DEPTH     (32'd4),
-  .TCP_WAIT_TICKS       (32'd200))
+  .MTU                  (1500),
+  .TCP_RETRANSMIT_TICKS (1000000),
+  .TCP_RETRANSMIT_TRIES (5),
+  .TCP_RAM_DEPTH        (12),
+  .TCP_PACKET_DEPTH     (4),
+  .TCP_WAIT_TICKS       (200))
 eth_vlg_inst (
 	.phy_rx (phy_rx),
 	.phy_tx (phy_tx),
@@ -192,15 +218,6 @@ eth_vlg_inst (
 	.rem_port  (16'b0)
 );
 
-assign phy_rx.d = phy_rx_dat;
-assign phy_rx.v = phy_rx_val;
-assign phy_rx.e = phy_rx_err;
-
-assign phy_tx_dat  = phy_tx.d;
-assign phy_tx_val  = phy_tx.v;
-assign phy_tx_err  = phy_tx.e;
-assign phy_gtx_clk = phy_rx_clk;
-
 //////////////////
 // P10 instance //
 //////////////////
@@ -209,19 +226,16 @@ p10 p10_inst (
   .clk (clk),
   .rst (rst),
 
-  .rxd (tcp_dout0),
-  .rxv (tcp_vout0),
+  .rxd (tcp_dout),
+  .rxv (tcp_vout),
 
-  .txd (tcp_din0),
-  .txv (tcp_vin0),
-  .cts (tcp_cts0),
+  .txd (tcp_din),
+  .txv (tcp_vin),
+  .cts (tcp_cts),
  
   .ram     (ram),
   .exec_if (exec_if)
 );
-
-// Convert "parameter ram contents" to "settings" and "executive interface"
-// to "commands" understandable by "module rhd ();"
 
 p10_ctrl p10_ctrl_inst (
   .clk (clk),
@@ -232,7 +246,7 @@ p10_ctrl p10_ctrl_inst (
   .connected (connected),  // <-in
 
   .settings (settings), // out->
-  .commands (commands)  // out->
+  .cmd (cmd)  // out->
 );
 
 endmodule

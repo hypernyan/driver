@@ -1,8 +1,55 @@
+interface cmd_if ();
+  logic on;
+  logic on_ok;
+  logic on_err;
+
+  logic off;
+  logic off_ok;
+  logic off_err;
+
+  logic apply;
+  logic apply_ok;
+  logic apply_err;
+
+  modport in        (input on, off, apply, output on_ok, off_ok, apply_ok, on_err, off_err, apply_err);
+  modport out       (output on, off, apply, input on_ok, off_ok, apply_ok, on_err, off_err, apply_err);
+  modport on_in     (input on, output on_ok, on_err);
+  modport on_out    (output on, input on_ok, on_err);
+  modport off_in    (input off, output off_ok, off_err);
+  modport off_out   (output off, input off_ok, off_err);
+  modport apply_in  (input apply, output apply_ok, apply_err);
+  modport apply_out (output apply, input apply_ok, apply_err);
+endinterface
+
+package drv_pkg;
+  parameter MAX_FREQ   = 200000;
+  parameter MAX_DUTY   = 50;
+  parameter DUTY_SCALE = 100;
+  parameter MAX_PHASE  = 359;
+  parameter FREQ_BITS  = $clog2(MAX_FREQ+1);
+  parameter DUTY_BITS  = $clog2(DUTY_SCALE+1);
+  parameter PHASE_BITS = $clog2(MAX_PHASE+1);
+typedef struct packed {
+  bit [FREQ_BITS-1:0]  freq;
+  bit [DUTY_BITS-1:0]  duty;
+  bit [PHASE_BITS-1:0] phase;
+} settings_t;
+
+endpackage
+
+import drv_pkg::*;
+
 module p10_ctrl #(
   parameter PARAMETER_COUNT = 3,
   parameter DEFAULT_DRIVER_FREQ_HZ = 50000,
   parameter DEFAULT_DUTY_PERCENT   = 33,
-  parameter DEFAULT_PHASE_DEGREE   = 180 
+  parameter DEFAULT_PHASE_DEGREE   = 180,
+  parameter MAX_FREQ_HZ  = 200000,
+  parameter MAX_DUTY_HZ  = 50,
+  parameter MAX_PHASE_HZ = 359,
+  parameter FREQ_BITS  = $clog2(MAX_FREQ_HZ +1),
+  parameter DUTY_BITS  = $clog2(MAX_DUTY_HZ +1),
+  parameter PHASE_BITS = $clog2(MAX_PHASE_HZ+1)
 )(
   input logic clk,
   input logic rst,
@@ -10,13 +57,9 @@ module p10_ctrl #(
   ram_if_sp.sys ram,
   output settings_t settings,
   exec.in exec_if,
-  rhd_cmd_if.out commands
+  cmd_if.out cmd
 );
 
-typedef struct packed {
-  freq_t freq;
-  
-} settings_t;
 
 `include "../../src/verilog/p10_reg_defines.sv"
 
@@ -100,38 +143,30 @@ always @ (posedge clk) begin
   end
 end
 
-assign settings.ch_count = 16;
-
 always @ (posedge clk) begin
   if (ram_v_o) begin
     case (ram_a_o)
-      ADDR_DRIVER_FREQ_HZ  : settings.samplerate_hz <= ram_d_o;
-      ADDR_DUTY_PERCENT    : settings.low_bw_milhz  <= ram_d_o;
-      ADDR_PHASE_DEGREE    : settings.high_bw_hz    <= ram_d_o;
+      ADDR_FREQ_HZ      : settings.freq  <= ram_d_o;
+      ADDR_DUTY_PERCENT : settings.duty  <= ram_d_o;
+      ADDR_PHASE_DEGREE : settings.phase <= ram_d_o;
     endcase
   end
 end
 
-// p10 executables -> rhd commands
+// p10 executables -> cmd
 always @ (posedge clk) begin
   if (exec_if.val) begin
     case (exec_if.addr)
-      ADDR_APPLY             : begin commands.apply <= 1; exec_if.ok <= commands.apply_ok; exec_if.err <= commands.apply_err; end
-      ADDR_STREAM_ON         : begin commands.start <= 1; exec_if.ok <= commands.start_ok; exec_if.err <= commands.start_err; end
-      ADDR_STREAM_OFF        : begin commands.stop  <= 1; exec_if.ok <= commands.stop_ok;  exec_if.err <= commands.stop_err;  end   
-    // ADDR_ENABLE_HPF        :        
-    // ADDR_DISABLE_HPF       :       
-    // ADDR_ENABLE_LPF        :        
-    // ADDR_DISABLE_LPF       :       
-    // ADDR_CALIBRATE         :         
-    // ADDR_MEASURE_IMPEDANCE : 
+      ADDR_APPLY   : begin cmd.apply <= 1; exec_if.ok <= cmd.apply_ok; exec_if.err <= cmd.apply_err; end
+      ADDR_ENABLE  : begin cmd.on    <= 1; exec_if.ok <= cmd.on_ok;    exec_if.err <= cmd.on_err;    end
+      ADDR_DISABLE : begin cmd.off   <= 1; exec_if.ok <= cmd.off_ok;   exec_if.err <= cmd.off_err;   end   
       default : exec_if.err <= 1'b1;
     endcase 
   end
   else begin
-    commands.apply <= 0;
-    commands.start <= 0;
-    commands.stop <= 0; 
+    cmd.apply <= 0;
+    cmd.on <= 0;
+    cmd.off <= 0; 
     exec_if.ok <= 0;
     exec_if.err <= 0;
   end

@@ -49,7 +49,7 @@ set TclPath [file dirname [file normalize [info script]]]
 set NewLoc [string range $TclPath 0 [string last / $TclPath]-5]
 
 set FamilyDev "Cyclobn 10 LP"
-set PartDev "10CL025YU256C8G"
+set PartDev "10CL016YU484C8G"
 set MemDev "EPCS64"
 set FlashLoadDev "10CL025Y"
 
@@ -64,6 +64,7 @@ lappend SrcDir $PrjDir/$TopName/src/top
 lappend SrcDir $PrjDir/$TopName/src/verilog
 lappend SrcDir $PrjDir/$TopName/p10/src
 lappend SrcDir $PrjDir/$TopName/hdl_generics/src
+lappend SrcDir $PrjDir/$TopName/eth_vlg/src
 
 set QuartusNm "quartus"
 set SrcIncDir  $PrjDir/$TopName/src/include

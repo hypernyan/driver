@@ -136,21 +136,21 @@ fixed_driver #(
 	//.duty    (duty),
 	//.phase   (phase),
 
-	.freq    (300000),
-	.duty    (48),
-	.phase   (180),
-
-	.drv0_en (drv0_en),
-	.drv0    (drv0),
-
-	.drv1_en (drv1_en),
-	.drv1    (drv1)
+//	.freq    (300000),
+//	.duty    (48),
+//	.phase   (180),
+//
+//	.drv0_en (drv0_en),
+//	.drv0    (drv0),
+//
+//	.drv1_en (drv1_en),
+//	.drv1    (drv1)
 );
 
-assign gate[0] = drv0;
-assign gate[1] = drv1;
-assign gate[2] = drv0;
-assign gate[3] = drv1;
+//assign gate[0] = drv0;
+//assign gate[1] = drv1;
+//assign gate[2] = drv0;
+//assign gate[3] = drv1;
 
 endmodule
 
